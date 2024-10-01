@@ -63,7 +63,7 @@ export default function Home() {
     }
 };
 
-  // todo: clean up redundant constants?
+
   const fetchHistoricalData = async () => {
     const today = new Date();
     const endDate = new Date(today);
@@ -94,7 +94,7 @@ export default function Home() {
       setIntervalId(id);
       return () => clearInterval(id);
     }
-  }, [isFetching, selectedCity]); // Fetch new data when city changes
+  }, [isFetching, selectedCity]); 
 
   const handleToggleFetching = () => {
     setIsFetching(prev => !prev);
@@ -124,7 +124,6 @@ export default function Home() {
     return date.toLocaleString('en-US', options);
   };
 
-  // main "reading" fields
   const storeCurrentReading = () => {
     if (weather) {
       const currentReading = {
@@ -152,8 +151,6 @@ export default function Home() {
   const hideRecentReadings = () => {
     setReadingsVisible(false);
   };
-
-
   
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-16">
