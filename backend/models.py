@@ -1,30 +1,37 @@
-from pydantic import BaseModel
-import datetime
+from database import Base
+from sqlalchemy import Column, Integer, Float, String, DateTime
 
-# Pydantic model for the weather data
-class WeatherDataBase(BaseModel):
-    city: str
-    temperature: float
-    temperature_unit: str
-    windspeed: float
-    windspeed_unit: str
-    precipitation: float
-    precipitation_unit: str
-    time: datetime.datetime
+# Weather model
+class WeatherReading(Base):
+    __tablename__ = "readings"
+    id = Column(Integer, primary_key=True, index=True)
+    city = Column(String)
+    temperature = Column(Float)
+    temperature_unit = Column(String)
+    windspeed = Column(Float)
+    windspeed_unit = Column(String)
+    precipitation = Column(Float)
+    precipitation_unit = Column(String)
+    time = Column(DateTime)
+    timezone = Column(String)
 
-# # Pydantic model for Historical weather data
-class HistoricalWeatherDataBase(BaseModel):
-    date : datetime.datetime
-    city: str
-    temperature_min: float
-    temperature_max : float
-    temperature_unit: str
-    precipitation: float
-    precipitation_unit: str
+# # Historical 
+# class HistoricalWeatherReading(Base):
+#     __tablename__ = "historical_data"
+#     id = Column(Integer, primary_key=True, index=True)
+#     date = Column(DateTime)
+#     city = Column(String)
+#     temperature_min = Column(Float)
+#     temperature_max = Column(Float)
+#     temperature_unit = Column(String)
+#     precipitation = Column(Float)
+#     precipitation_unit = Column(String)
 
-# Model for Location
-class LocationBase(BaseModel):
-    city: str
-    latitude: float
-    longitude : float
-    timezone: str
+# # Location
+# class LocationData(Base):
+#     __tablename__ = "locations"
+#     id = Column(Integer, primary_key=True, index=True)
+#     city = Column(String)
+#     latitude = Column(Float)
+#     longitude = Column(Float)
+#     timezone = Column(String)

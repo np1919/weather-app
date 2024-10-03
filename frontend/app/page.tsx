@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
+// temporary data solution
 const cities = {
   'Toronto, Ontario, Canada': { city_id: 1, latitude: 43.7, longitude: -79.42, timezone: 'America/Toronto' },
   'New York, New York, USA': { city_id: 2, latitude: 40.71, longitude: -74.01, timezone: 'America/New_York' },
@@ -14,38 +15,53 @@ const cities = {
   'Budapest, Hungary': { city_id: 8, latitude: 47.5, longitude: 19.04, timezone: 'Europe/Budapest' }
 };
 
+// not using this right now -- more to learn about data verification between frontend/backend.
+// interface WeatherData {
+//   city: string;
+//   temperature: number;
+//   temperature_unit: string;
+//   windspeed: number;
+//   windspeed_unit: string;
+//   precipitation: number;
+//   precipitation_unit: string;
+//   time: Date;
+//   timezone: string;
+// }
+
+
 export default function Home() {
+  // data
   const [weather, setWeather] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [fetchTime, setFetchTime] = useState('');
   const [historicalData, setHistoricalData] = useState(null);
   const [futureWeather, setFutureWeather] = useState(null);
+  // frontend states
+  const [selectedCity, setSelectedCity] = useState('Toronto, Ontario, Canada');
+  const [loading, setLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(true);
+  const [readingsVisible, setReadingsVisible] = useState(false);
+  // flash message states
   const [intervalId, setIntervalId] = useState(null);
+  const [flashMessage, setFlashMessage] = useState('');
+  // these should be called up from the backend
   const [storedReadings, setStoredReadings] = useState([]);
   const [showReadings, setShowReadings] = useState(false);
-  const [flashMessage, setFlashMessage] = useState('');
-  const [readingsVisible, setReadingsVisible] = useState(false);
-  const [selectedCity, setSelectedCity] = useState('Toronto, Ontario, Canada');
 
-  interface WeatherData {
-    city: string;
-    temperature: number;
-    temperature_unit: string;
-    windspeed: number;
-    windspeed_unit: string;
-    precipitation: number;
-    precipitation_unit: string;
-    time: Date
-  }
 
+
+  // this function to be broken into pieces?
   const fetchWeatherData = async () => {
     try {
+      // execute data request to the backend
       const response = await axios.get(`http://127.0.0.1:8000/weather/fetch/${cities[selectedCity].city_id}`);
-  
+      // unpack the response (tuple?? dictionary.)
       const { current_weather, historical_weather, future_weather } = response.data;
-      
+      // "Last Updated At" time -- when the API was last updated. Caching triage could exist in frontend?
       const last_api_time = current_weather.time.toLocaleString('en-US', { timeZone: current_weather.timezone });
+      // "Last Fetched At" time -- when data was fetched.
+      setFetchTime(new Date().toLocaleString('en-US', { timeZone: 'UTC' }));
+
+      // assign the unpacked data. If historical data has been looked up once, it should not need to be looked up again.
       setWeather({
         city: current_weather.city,
         temperature: current_weather.temperature,
@@ -54,25 +70,23 @@ export default function Home() {
         windspeed_unit: current_weather.windspeed_unit,
         precipitation: current_weather.precipitation,
         precipitation_unit: current_weather.precipitation_unit,
-        time: last_api_time
+        // log the time that the api was last updated, in the current snapshot
+        time: last_api_time,
+        timezone: current_weather.timezone,
       });
-  
       setHistoricalData({
         time: historical_weather.time.reverse(),
         temperature_2m_max: historical_weather.temperature_2m_max.reverse(),
         temperature_2m_min: historical_weather.temperature_2m_min.reverse(),
         precipitation_sum: historical_weather.precipitation_sum.reverse(),
       });
-  
-      // Set future weather data
       setFutureWeather({
         time: future_weather.time,
         temperature_2m_min: future_weather.temperature_2m_min,
         temperature_2m_max: future_weather.temperature_2m_max,
         precipitation_sum: future_weather.precipitation_sum,
       });
-  
-      setFetchTime(new Date().toLocaleString('en-US', { timeZone: cities[selectedCity].timezone }));
+
       setLoading(false);
     } catch (error) {
       console.error("Error fetching weather data:", error);
@@ -80,41 +94,25 @@ export default function Home() {
     }
   };
 
+
   useEffect(() => {
     if (isFetching) {
+      // when true: fetch weather data. 
       fetchWeatherData();
+      // initiate an interval, after which the data will be refreshed after 60 seconds.
       const id = setInterval(fetchWeatherData, 60000);
       setIntervalId(id);
       return () => clearInterval(id);
     }
   }, [isFetching, selectedCity]);
 
+
   const handleToggleFetching = () => {
-    setIsFetching(prev => !prev);
-    if (isFetching && intervalId) {
-      clearInterval(intervalId);
-    }
-  };
+    setIsFetching(prev => !prev)};
 
   const handleCityChange = (event) => {
-    setSelectedCity(event.target.value);
-    fetchWeatherData();
+    setSelectedCity(event.target.value)
   };
-
-  // const formatLocalTime = (localTime) => {
-  //   const date = new Date(localTime);
-  //   const options = {
-  //     timeZone: cities[selectedCity].timezone,
-  //     year: 'numeric',
-  //     month: 'numeric',
-  //     day: 'numeric',
-  //     hour: 'numeric',
-  //     minute: 'numeric',
-  //     second: 'numeric',
-  //     hour12: true,
-  //   };
-  //   return date.toLocaleString('en-US', options).replace(',', '');
-  // };
   
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -143,66 +141,35 @@ export default function Home() {
     setReadingsVisible(false);
   };
 
-  const storeCurrentReading = () => {
+
+  const storeCurrentReading = async () => {
     if (weather) {
-      const currentReading = {
-        city: weather.city,
-        temperature: weather.temperature,
-        windspeed: weather.windspeed,
-        precipitation: weather.precipitation,
-        time: weather.time,
-        timezone : weather.timezone
-      };
-      const updatedReadings = [currentReading, ...storedReadings];
-      setStoredReadings(updatedReadings.slice(0, 5));
-      localStorage.setItem('weatherReadings', JSON.stringify(updatedReadings.slice(0, 5)));
-      setFlashMessage('Current reading stored!');
-      setTimeout(() => setFlashMessage(''), 999);
+      if (weather.city == selectedCity) {
+        try {
+          const response = await axios.get('http://127.0.0.1:8000/readings/store');
+          setFlashMessage('Current reading stored!');
+          setTimeout(() => setFlashMessage(''), 999);
+
+          if (readingsVisible) {
+            loadRecentReadings()
+          }
+      } catch (error) {
+        console.error("Error loading recent readings:", error);
+      }
+    }
+   }
+  };
+
+  const loadRecentReadings = async () => {
+    try {
+      const response = await axios.get('http://127.0.0.1:8000/readings/fetch');
+      setStoredReadings(response.data);
+      // setShowReadings(true);
+      setReadingsVisible(true);
+    } catch (error) {
+      console.error("Error loading recent readings:", error);
     }
   };
-
-  const loadRecentReadings = () => {
-    const savedReadings = JSON.parse(localStorage.getItem('weatherReadings')) || [];
-    setStoredReadings(savedReadings);
-    setShowReadings(true);
-    setReadingsVisible(true);
-  };
-
-//   const storeCurrentReadingDB = async () => {
-//     if (!weather) return;
-//     setFetchTime(new Date().toLocaleString('en-US', { timeZone: cities[selectedCity].timezone }));
-//     const reading: WeatherData = {
-//       city: weather.city,
-//       temperature: weather.temperature,
-//       temperature_unit: weather.temperature_unit,
-//       windspeed: weather.windspeed,
-//       windspeed_unit: weather.windspeed_unit,
-//       precipitation: weather.precipitation,
-//       precipitation_unit: weather.precipitation_unit, 
-//       time: fetchTime
-//     };
-//     // console.log("Weather Object:", weather);
-//     // console.log(reading);
-//     try {
-//       const response = await axios.post('http://127.0.0.1:8000/weather/store', reading);
-//       setFlashMessage('Current reading stored successfully!');
-//       setTimeout(() => setFlashMessage(''), 500);
-//       // fetchStoredReadings(); // Optionally fetch the updated readings
-//     } catch (error) {
-//       console.error("Error storing current reading:", error);
-//       setFlashMessage('Error storing reading. Please try again.');
-//     }
-// };
-
-//   const loadRecentReadingsDB = async () => {
-//     try {
-//       const response = await axios.get('http://127.0.0.1:8000/weather/readings');
-//       setStoredReadings(response.data);
-//       setReadingsVisible(true);
-//     } catch (error) {
-//       console.error("Error loading recent readings:", error);
-//     }
-//   };
 
 
   return (
@@ -240,8 +207,8 @@ export default function Home() {
               <p>Temperature: {weather?.temperature}°C</p> 
               <p>Wind Speed: {weather?.windspeed} km/h</p>
               <p>Precipitation: {weather?.precipitation ?? 0} mm</p>
-              <p>Last Updated (API): {formatDate(weather?.time)}</p>
-              <p>Last Fetched At: {fetchTime}</p>
+              <p>Last Updated: {formatDate(weather?.time)} (Local Time)</p>
+              <p>Last Fetched At: {fetchTime} (UTC)</p>
               <p>Fetching: {isFetching ? 'Enabled' : 'Disabled'}</p>
               {flashMessage && <p className="text-green-500">{flashMessage}</p>}
             </div>
@@ -289,7 +256,7 @@ export default function Home() {
             <ul>
               {storedReadings.map((reading, index) => (
                 <li key={index} className="mb-1">
-                  {reading.city} | Temperature: {reading.temperature}°C | Wind Speed: {reading.windspeed} km/h | Precipitation: {reading.precipitation} mm | Recorded: {reading.time.replace("T", " ")} (Local Time)
+                  {reading.city} | Temperature: {reading.temperature}°C | Wind Speed: {reading.windspeed} km/h | Precipitation: {reading.precipitation} mm | Recorded: {reading.time.replace("T", " ")} (UTC)
                 </li>
               ))}
             </ul>
@@ -299,3 +266,4 @@ export default function Home() {
     </div>
   );
 }
+
