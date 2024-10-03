@@ -1,4 +1,4 @@
-To run the code, install requirements.txt and run:
+To run the code, install required packages with npm and venv + requirements.txt and run:
 `uvicorn main:app --reload`
 
 ...in the backend directory and then 
