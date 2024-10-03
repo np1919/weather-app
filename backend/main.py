@@ -1,60 +1,29 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-# from fastapi.responses import JSONResponse
-from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime
-from sqlalchemy.ext.declarative import declarative_base
+from models import WeatherDataBase
+from schemas import WeatherReading
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import datetime, pytz, requests
+
+import datetime, requests
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.declarative import declarative_base
+from utility_functions import return_location_data
+
 
 # Database setup
 DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 Base = declarative_base()
-
-# Weather model
-class WeatherReading(Base):
-    __tablename__ = "readings"
-    id = Column(Integer, primary_key=True, index=True)
-    city = Column(String)
-    temperature = Column(Float)
-    temperature_unit = Column(String)
-    windspeed = Column(Float)
-    windspeed_unit = Column(String)
-    precipitation = Column(Float)
-    precipitation_unit = Column(String)
-    time = Column(DateTime)
-
-# Pydantic model for the weather data
-class WeatherData(BaseModel):
-    city: str
-    temperature: float
-    temperature_unit: str
-    windspeed: float
-    windspeed_unit: str
-    precipitation: float
-    precipitation_unit: str
-    time: datetime.datetime
-
-# City map
-cities_map = {
-    1: { "city": 'Toronto, Ontario, Canada', "latitude": 43.7, "longitude": -79.42, "timezone": 'America/Toronto' },
-    2: { "city": 'New York, New York, USA', "latitude": 40.71, "longitude": -74.01, "timezone": 'America/New_York' },
-    3: { "city": 'London, England', "latitude": 51.51, "longitude": -0.13, "timezone": 'Europe/London' },
-    4: { "city": 'Los Angeles, California, USA', "latitude": 34.05, "longitude": -118.25, "timezone": 'America/Los_Angeles' },
-    5: { "city": 'Tokyo, Japan', "latitude": 35.68, "longitude": 139.76, "timezone": 'Asia/Tokyo' },
-    6: { "city": 'Sydney, Australia', "latitude": -33.87, "longitude": 151.21, "timezone": 'Australia/Sydney' },
-    7: { "city": 'Moscow, Russia', "latitude": 55.76, "longitude": 37.62, "timezone": 'Europe/Moscow' },
-    8: { "city": 'Budapest, Hungary', "latitude": 47.5, "longitude": 19.04, "timezone": 'Europe/Budapest' }
-}
+Base.metadata.create_all(bind=engine)
 
 # Create the database tables
-Base.metadata.create_all(bind=engine)
 app = FastAPI()
+
+
 origins = [
-    "http://localhost:3000",  # Allows requests from this origin
-]
+    "http://localhost:3000",]  # Allows requests from this origin
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,46 +33,71 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# def convert_time(utc_time: datetime.datetime, timezone: str):
-#     local_tz = pytz.timezone(timezone)
-#     return utc_time.astimezone(local_tz)
 
-@app.post("/weather/store", response_model=WeatherData)
-async def store_weather(data: WeatherData):
-    print(data)  # Log the incoming data
+# @app.post("/weather/store", response_model=WeatherData)
+# async def store_weather(data: WeatherData):
 
-    db = SessionLocal()
-    reading = WeatherReading(
-        city=data.city,
-        temperature=data.temperature,
-        temperature_unit=data.temperature_unit,
-        windspeed=data.windspeed,
-        windspeed_unit=data.windspeed_unit,
-        precipitation=data.precipitation,
-        precipitation_unit=data.precipitation_unit,
-        time=data.time  # Ensure this is a valid datetime object
-    )
-    print(reading.__dict__)
-    db.add(reading)
-    db.commit()
-    db.refresh(reading)
-    db.close()
-    return reading
+# """ 
+# 
+# 
+# 
+#           function to post 'event' to database -- for live streaming, run through kafka or another message queue for persistence? 
+# 
+# 
+# 
+# 
+#                   """
+
+#     # print(data)  # Log the incoming data
+#     db = SessionLocal()
+#     reading = WeatherReading(
+#         city=data.city,
+#         temperature=data.temperature,
+#         temperature_unit=data.temperature_unit,
+#         windspeed=data.windspeed,
+#         windspeed_unit=data.windspeed_unit,
+#         precipitation=data.precipitation,
+#         precipitation_unit=data.precipitation_unit,
+#         time=data.time  # Ensure this is a valid datetime object
+#     )
+#     # print(reading.__dict__)
+#     db.add(reading)
+#     db.commit()
+#     db.refresh(reading)
+#     db.close()
+#     return reading
 
 # Endpoint to read the most recent readings
-@app.get("/weather/readings", response_model=list[WeatherData])
-async def read_recent_readings(limit: int = 5):
-    db = SessionLocal()
-    readings = db.query(WeatherReading).order_by(WeatherReading.time).limit(limit).all()
-    db.close()
-    return readings
+# @app.get("/weather/readings", response_model=list[WeatherData])
+# async def read_recent_readings(limit: int = 5):
+#   """   
+#   
+#   grab most recent five requests from the database (which could grow to be larger than the frontend local storage -- but is excessive/duplicated without the caching layer)
+# 
+#     """
+#     db = SessionLocal()
+#     readings = db.query(WeatherReading).order_by(WeatherReading.time).limit(limit).all()
+#     db.close()
+#     return readings
+
 
 @app.get("/")
 async def homepage():
     return {"message": "Welcome to the Weather API!"}
 
+
 @app.get("/weather/fetch/{city_id}")
 async def fetch_weather(city_id: int):
+    """todo: 1. implement request triage based on whether data is available already; 
+                a. cache "live data" within API refresh timeframe to prevent excessive API requests (could be similar to the 'refresh' functionality in frontend, as well?)
+                b. store historical data in database -- look up by..?? request date, local time? execute an API call for 1 day of data, in a persistent db store?
+                c. for a persistent data store of locations (as opposed to using an API, which would be superior), map correctly with frontend
+             
+            2. modify the singular API request, breaking it into pieces as async lookups
+                a. make sure that the data has been refreshed or looked up correctly for each piece before storing to db
+             """
+    
+    cities_map = return_location_data()
     formatted_start_date = (datetime.datetime.now() - datetime.timedelta(days=5)).date()
     formatted_end_date = (datetime.datetime.now() + datetime.timedelta(days=5)).date()
     city = cities_map[city_id]['city']

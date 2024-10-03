@@ -115,6 +115,29 @@ export default function Home() {
   //   };
   //   return date.toLocaleString('en-US', options).replace(',', '');
   // };
+  
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+  
+    // Get individual parts of the date
+    const month = date.getMonth() + 1;  // getMonth is zero-based
+    const day = date.getDate();
+    const year = date.getFullYear();
+  
+    // Get hours, minutes, and seconds
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+  
+    // Determine AM/PM
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;  // Convert 24-hour to 12-hour format, adjust 0-hour to 12
+  
+    // Format the date and time parts
+    const formattedDate = `${month}/${day}/${year}, ${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} ${ampm}`;
+  
+    return formattedDate;
+  };
 
   const hideRecentReadings = () => {
     setReadingsVisible(false);
@@ -145,41 +168,41 @@ export default function Home() {
     setReadingsVisible(true);
   };
 
-  const storeCurrentReadingDB = async () => {
-    if (!weather) return;
-    setFetchTime(new Date().toLocaleString('en-US', { timeZone: cities[selectedCity].timezone }));
-    const reading: WeatherData = {
-      city: weather.city,
-      temperature: weather.temperature,
-      temperature_unit: weather.temperature_unit,
-      windspeed: weather.windspeed,
-      windspeed_unit: weather.windspeed_unit,
-      precipitation: weather.precipitation,
-      precipitation_unit: weather.precipitation_unit, 
-      time: fetchTime
-    };
-    // console.log("Weather Object:", weather);
-    // console.log(reading);
-    try {
-      const response = await axios.post('http://127.0.0.1:8000/weather/store', reading);
-      setFlashMessage('Current reading stored successfully!');
-      setTimeout(() => setFlashMessage(''), 500);
-      // fetchStoredReadings(); // Optionally fetch the updated readings
-    } catch (error) {
-      console.error("Error storing current reading:", error);
-      setFlashMessage('Error storing reading. Please try again.');
-    }
-};
+//   const storeCurrentReadingDB = async () => {
+//     if (!weather) return;
+//     setFetchTime(new Date().toLocaleString('en-US', { timeZone: cities[selectedCity].timezone }));
+//     const reading: WeatherData = {
+//       city: weather.city,
+//       temperature: weather.temperature,
+//       temperature_unit: weather.temperature_unit,
+//       windspeed: weather.windspeed,
+//       windspeed_unit: weather.windspeed_unit,
+//       precipitation: weather.precipitation,
+//       precipitation_unit: weather.precipitation_unit, 
+//       time: fetchTime
+//     };
+//     // console.log("Weather Object:", weather);
+//     // console.log(reading);
+//     try {
+//       const response = await axios.post('http://127.0.0.1:8000/weather/store', reading);
+//       setFlashMessage('Current reading stored successfully!');
+//       setTimeout(() => setFlashMessage(''), 500);
+//       // fetchStoredReadings(); // Optionally fetch the updated readings
+//     } catch (error) {
+//       console.error("Error storing current reading:", error);
+//       setFlashMessage('Error storing reading. Please try again.');
+//     }
+// };
 
-  const loadRecentReadingsDB = async () => {
-    try {
-      const response = await axios.get('http://127.0.0.1:8000/weather/readings');
-      setStoredReadings(response.data);
-      setReadingsVisible(true);
-    } catch (error) {
-      console.error("Error loading recent readings:", error);
-    }
-  };
+//   const loadRecentReadingsDB = async () => {
+//     try {
+//       const response = await axios.get('http://127.0.0.1:8000/weather/readings');
+//       setStoredReadings(response.data);
+//       setReadingsVisible(true);
+//     } catch (error) {
+//       console.error("Error loading recent readings:", error);
+//     }
+//   };
 
 
   return (
@@ -217,7 +240,7 @@ export default function Home() {
               <p>Temperature: {weather?.temperature}°C</p> 
               <p>Wind Speed: {weather?.windspeed} km/h</p>
               <p>Precipitation: {weather?.precipitation ?? 0} mm</p>
-              <p>Last Updated (API): {weather?.time}</p>
+              <p>Last Updated (API): {formatDate(weather?.time)}</p>
               <p>Last Fetched At: {fetchTime}</p>
               <p>Fetching: {isFetching ? 'Enabled' : 'Disabled'}</p>
               {flashMessage && <p className="text-green-500">{flashMessage}</p>}
