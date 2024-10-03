@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 import datetime
 
-# SQLAlchemy ORM model for the weather data
 class WeatherDataBase(BaseModel):
     city: str
     temperature: float
@@ -15,8 +14,6 @@ class WeatherDataBase(BaseModel):
     class Config:
         from_attributes = True
 
-
-# SQLAlchemy ORM model for Historical weather data
 # class HistoricalWeatherDataBase(BaseModel):
 #     date : datetime.datetime
 #     city: str
@@ -26,7 +23,6 @@ class WeatherDataBase(BaseModel):
 #     precipitation: float
 #     precipitation_unit: str
 
-# # SQLAlchemy ORM for Location
 # class LocationBase(BaseModel):
 #     city: str
 #     latitude: float

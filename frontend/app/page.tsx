@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
-// temporary data solution
+// temporary data storage...
 const cities = {
   'Toronto, Ontario, Canada': { city_id: 1, latitude: 43.7, longitude: -79.42, timezone: 'America/Toronto' },
   'New York, New York, USA': { city_id: 2, latitude: 40.71, longitude: -74.01, timezone: 'America/New_York' },
@@ -14,20 +14,6 @@ const cities = {
   'Moscow, Russia': { city_id: 7, latitude: 55.76, longitude: 37.62, timezone: 'Europe/Moscow' },
   'Budapest, Hungary': { city_id: 8, latitude: 47.5, longitude: 19.04, timezone: 'Europe/Budapest' }
 };
-
-// not using this right now -- more to learn about data verification between frontend/backend.
-// interface WeatherData {
-//   city: string;
-//   temperature: number;
-//   temperature_unit: string;
-//   windspeed: number;
-//   windspeed_unit: string;
-//   precipitation: number;
-//   precipitation_unit: string;
-//   time: Date;
-//   timezone: string;
-// }
-
 
 export default function Home() {
   // data
@@ -266,4 +252,3 @@ export default function Home() {
     </div>
   );
 }
-
