@@ -1,8 +1,21 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException#, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal, engine
 import crud_utils, models, schemas
 import datetime, requests, pytz, pprint
+from routers import readings
+
+
+###### this branch still uses the cache class to log recently fetched data -- and just a single API call to fetch all that data
+###### however, it now passes the data for the most recent request back from the frontend
+###### instead of caching the most request every time and entering it on the backend directly.
+##### also: added APIRouter instance for readings endpoints, in the '/routers/readings.py' file.
+
+##### todo: Create location map in db and access it from frontend api call. 
+##### todo: implement cache size limit, if increasing number of locations
+##### todo: split the API request into current data (first), then historical data and future data.
+##### todo: longterm storage in the database? more crud utilities? 
+##### todo: include a location API, and an auto-complete location search box to frontend.
 
 origins = [
     "http://localhost:3000",]  # Allows requests from this origin
@@ -20,6 +33,8 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+app.include_router(readings.router)
+
 # custom caching/triage class
 cache = crud_utils.LocalHostCache()
 
@@ -28,37 +43,9 @@ cache = crud_utils.LocalHostCache()
 async def homepage():
     return {"message": "Welcome to the Weather API!"}
 
-  
-@app.get("/readings/store")
-async def store_weather():
-    """writes the cached 'most_recent_reading' to the WeatherReading table in db"""
-    # print('youre in the readings/store endpoint', cache.most_recent_reading) ## for testing
-    reading = models.WeatherReading(**cache.most_recent_reading)
-    #use backend server UTC time for consistency
-    reading.time = datetime.datetime.utcnow()
-    db = SessionLocal()
-    db.add(reading)
-    db.commit()
-    db.refresh(reading)
-    db.close() # todo: wrap these procedures ? use get_db with try/except/finally blocks?
-    return reading # return the data you wrote to the db as json/dictionary (for testing) 
-
-
-#Endpoint to read the (5) most recent readings
-@app.get("/readings/fetch")
-async def read_recent_readings(skip: int=0, limit: int = 5):
-    """reads the WeatherReading table and returns a list of dictionaries
-    todo: use the schemas.py pydantic models to verify data transactions between backend and frontend"""
-    db = SessionLocal()
-    readings = db.query(models.WeatherReading).order_by(models.WeatherReading.time.desc()).limit(limit).all()
-    db.close()
-    return readings
-
 @app.get("/weather/fetch/{city_id}")
 async def fetch_weather(city_id: int):
-    """todo: 1. modify the singular API request, breaking it into pieces as async lookups
-             2. make sure that the data has been refreshed or looked up correctly for each piece before storing to db?
-             3. add unit testing
+    """fetch weather data for a given city_id
              """
     
     ### Branching logic, to separate API calls for immediate, past, and future data (and/or retrieve those data from db)
@@ -67,7 +54,7 @@ async def fetch_weather(city_id: int):
         ### Cache stores a 'last_updated_at' value, which is instantiated on cache creation.
         ### When storing the last-updated-at value in the cache upon a new request (below), the value is rounded down to the previous 15 minute interval. 
         ### This hijinks is not confirmed by checking the time which comes out of the API... 
-        weather_data = get_all_data(city_id)
+        weather_data = get_all_data(city_id) ## use httpx or asyncio closures to await a response asynchronously
         # return weather_data ## for testing api structure
         city = cache.location_data[city_id]['city'] 
         ## random integers are not the best unique identifier...should absolutely be sharing a single table with frontend and backend.
@@ -138,7 +125,7 @@ def get_all_data(city_id):
     # imputing the timezone into the API call as local is kind of crazy bro.
     OPEN_METEO_URL = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&start_date={formatted_start_date}&end_date={formatted_end_date}&timezone={timezone}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&current_weather=true"
     try:
-        response = requests.get(OPEN_METEO_URL)
+        response = requests.get(OPEN_METEO_URL) ## use httpx or asyncio closures to await a response asynchronously
         response.raise_for_status() 
     except requests.RequestException as e:
         raise HTTPException(status_code=400, detail=f"Error fetching weather data: {str(e)}")

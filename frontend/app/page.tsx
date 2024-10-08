@@ -132,7 +132,19 @@ export default function Home() {
     if (weather) {
       if (weather.city == selectedCity) {
         try {
-          const response = await axios.get('http://127.0.0.1:8000/readings/store');
+          // const response = await axios.get('http://127.0.0.1:8000/readings/store');
+          const response = await axios.post('http://127.0.0.1:8000/readings/store', {
+              city: weather.city,
+              temperature: weather.temperature,
+              temperature_unit: weather.temperature_unit,
+              windspeed: weather.windspeed,
+              windspeed_unit: weather.windspeed_unit,
+              precipitation: weather.precipitation,
+              precipitation_unit: weather.precipitation_unit,
+              // log the time that the api was last updated, in the current snapshot
+              time: fetchTime,
+              timezone: weather.timezone
+          });
           setFlashMessage('Current reading stored!');
           setTimeout(() => setFlashMessage(''), 999);
 

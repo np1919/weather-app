@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, Float, String, DateTime
 # Weather model
 class WeatherReading(Base):
     __tablename__ = "readings"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     city = Column(String)
     temperature = Column(Float)
     temperature_unit = Column(String)
